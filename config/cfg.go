@@ -4,11 +4,11 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"golang.org/x/oauth2"
 )
 
 type Config struct {
-	googleAuth oauth2.Config
+	GoogleAuth     OAuth2Cfg
+	OAuthSecretKey string
 }
 
 func NewConfig() (*Config, error) {
@@ -18,7 +18,11 @@ func NewConfig() (*Config, error) {
 		}
 	}
 
-	googleOAuth2Cfg, err := FillOAuthGoogleCfg()
+	googleOAuth2Cfg, err := GoogleCfg()
+	if err != nil {
+		return &Config{}, err
+	}
+	oauthSecretKey := os.Getenv("OAUTH_SECRET_KEY")
 
-	return &Config{googleAuth: googleOAuth2Cfg}, err
+	return &Config{GoogleAuth: googleOAuth2Cfg, OAuthSecretKey: oauthSecretKey}, err
 }

@@ -4,6 +4,9 @@ import (
 	"auth/config"
 	api "auth/internal/api/http"
 	_ "auth/internal/api/http/docs"
+	"auth/internal/api/http/handlers"
+	"auth/internal/application/query"
+	"auth/internal/infrastructure/oauth"
 	"net/http"
 )
 
@@ -14,7 +17,7 @@ import (
 func main() {
 	port := "6767"
 
-	_, err := config.NewConfig()
+	cfg, err := config.NewConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -30,28 +33,31 @@ func main() {
 	//	panic("failed to create minio client")
 	//}
 
+	// Клиенты
+	oauthGoogleClient := oauth.NewOAuth2Client(&cfg.GoogleAuth)
+
+	//Инфраструктура
+	oauthStateGenerator := oauth.NewOauthStateClient(cfg.OAuthSecretKey)
+
 	// Репозитории
 	//cmdRepo := postgres.NewProfileCommandRepository(postgresPool)
 	//qryRepo := postgres.NewProfileQueryRepository(postgresPool)
 	//
 	//minioRepo := minIO.NewAvatarMinioRepository(MinioClient, cfg.Bucket)
 	//
-	//// Команды и Запросы
+	// Команды и Запросы
+	getGoogleOAuthRedirectQuery := query.NewGetGoogleOAuthRedirectQuery(oauthGoogleClient)
+	getGoogleOAuthCallbackQuery := query.NewGetGoogleOAuthCallbackQuery(oauthGoogleClient)
 	//createCmd := command.NewCreateProfileCommand(cmdRepo)
-	//updateCmd := command.NewUpdateProfileCommand(cmdRepo)
 	//getQry := query.NewGetProfileQuery(qryRepo)
 	//getAvatarUploadUrlCmd := command.NewGetAvatarQuery(minioRepo)
-	//getAvatarDownloadUrlCmd := query.NewGetAvatarQuery(minioRepo)
-	//
-	//// Хендлеры
-	//createHandler := handlers.NewCreateProfileHandler(createCmd)
-	//getHandler := handlers.NewGetProfileHandler(getQry)
-	//updateHandler := handlers.NewUpdateProfileHandler(updateCmd, getQry)
-	//GetAvatarUploadUrlHandler := handlers.NewGetAvatarUploadUrlHandler(getAvatarUploadUrlCmd)
-	//GetAvatarDownloadUrlHandler := handlers.NewGetAvatarDownloadUrlHandler(getAvatarDownloadUrlCmd)
+
+	// Handler
+	oauthGoogleRedirectHandler := handlers.NewGetGoogleOAuthRedirectHandler(getGoogleOAuthRedirectQuery, oauthStateGenerator)
+	oauthGoogleCallbackHandler := handlers.NewGoogleOAuthCallbackHandler(getGoogleOAuthCallbackQuery, oauthStateGenerator)
 
 	// Роутер
-	router := api.NewRouter()
+	router := api.NewRouter(oauthGoogleRedirectHandler, oauthGoogleCallbackHandler)
 
 	if err := http.ListenAndServe(":"+port, router); err != nil {
 		panic(err)
