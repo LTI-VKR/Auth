@@ -4,13 +4,14 @@ import stdErrors "errors"
 
 // state
 var (
-	ErrInvalidState    = stdErrors.New("состояние OAuth невалидно")
-	ErrBadSignature    = stdErrors.New("подпись состояния неверна")
-	ErrStateFormat     = stdErrors.New("неправильный формат состояния")
-	ErrGenerateNonce   = stdErrors.New("не удалось сгенерировать nonce")
-	ErrUnmarshalState  = stdErrors.New("не удалось разобрать состояние")
-	ErrEmptyReturnTo   = stdErrors.New("return_to не должен быть пустым")
-	ErrInvalidReturnTo = stdErrors.New("невалидный return_to URL")
+	ErrInvalidState         = stdErrors.New("состояние OAuth невалидно")
+	ErrBadSignature         = stdErrors.New("подпись состояния неверна")
+	ErrStateFormat          = stdErrors.New("неправильный формат состояния")
+	ErrGenerateNonce        = stdErrors.New("не удалось сгенерировать nonce")
+	ErrUnmarshalState       = stdErrors.New("не удалось разобрать состояние")
+	ErrEmptyReturnTo        = stdErrors.New("return_to не должен быть пустым")
+	ErrInvalidReturnTo      = stdErrors.New("невалидный return_to URL")
+	ErrInvalidOAuthProvider = stdErrors.New("неподдерживаемый OAuth провайдер")
 )
 
 // OAuth

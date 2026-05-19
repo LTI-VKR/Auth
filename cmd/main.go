@@ -5,10 +5,15 @@ import (
 	api "auth/internal/api/http"
 	_ "auth/internal/api/http/docs"
 	"auth/internal/api/http/handlers"
+	"auth/internal/application"
+	"auth/internal/application/ports"
 	"auth/internal/application/query"
 	"auth/internal/infrastructure/oauth"
 	"net/http"
+	"time"
 )
+
+const ClientTimeout = 30 * time.Second
 
 // @title Auth API
 // @version 0.1.0
@@ -21,43 +26,32 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//
-	//postgresPool, err := postgres.NewPool(cfg.DatabaseUrl)
-	//if err != nil {
-	//	panic("failed to create pool")
-	//}
-	//defer postgresPool.Close()
-	//
-	//MinioClient, err := minIO.NewMinioClient(cfg.Endpoint, cfg.Login, cfg.Password)
-	//if err != nil {
-	//	panic("failed to create minio client")
-	//}
 
 	// Клиенты
-	oauthGoogleClient := oauth.NewOAuth2Client(&cfg.GoogleAuth)
+	baseClient := http.Client{Timeout: ClientTimeout}
+	oauthGoogleClient := oauth.NewGoogleClient(&cfg.GoogleAuth, &baseClient)
+	oauthVkClient := oauth.NewVkClient(&cfg.VkAuth, &baseClient)
+
+	// Фабрика клиентов
+	clientFactory := oauth.NewClientFactory(map[application.OAuthProvider]ports.OAuthClient{
+		application.GoogleProvider: oauthGoogleClient,
+		application.VkProvider:     oauthVkClient,
+	})
 
 	//Инфраструктура
 	oauthStateGenerator := oauth.NewOauthStateClient(cfg.OAuthSecretKey)
 
-	// Репозитории
-	//cmdRepo := postgres.NewProfileCommandRepository(postgresPool)
-	//qryRepo := postgres.NewProfileQueryRepository(postgresPool)
-	//
-	//minioRepo := minIO.NewAvatarMinioRepository(MinioClient, cfg.Bucket)
-	//
 	// Команды и Запросы
-	getGoogleOAuthRedirectQuery := query.NewGetGoogleOAuthRedirectQuery(oauthGoogleClient)
-	getGoogleOAuthCallbackQuery := query.NewGetGoogleOAuthCallbackQuery(oauthGoogleClient)
-	//createCmd := command.NewCreateProfileCommand(cmdRepo)
-	//getQry := query.NewGetProfileQuery(qryRepo)
-	//getAvatarUploadUrlCmd := command.NewGetAvatarQuery(minioRepo)
+	getOAuthRedirectQuery := query.NewGetOAuthRedirectUrlQuery(clientFactory)
+	getOAuthCallbackQuery := query.NewGetOAuthCallbackQuery(clientFactory)
 
 	// Handler
-	oauthGoogleRedirectHandler := handlers.NewGetGoogleOAuthRedirectHandler(getGoogleOAuthRedirectQuery, oauthStateGenerator)
-	oauthGoogleCallbackHandler := handlers.NewGoogleOAuthCallbackHandler(getGoogleOAuthCallbackQuery, oauthStateGenerator)
+	oauthRedirectHandler := handlers.NewGetOAuthRedirectUrlHandler(getOAuthRedirectQuery, oauthStateGenerator)
+	oauthGoogleCallbackHandler := handlers.NewGoogleOAuthCallbackHandler(getOAuthCallbackQuery, oauthStateGenerator)
+	oauthVkCallbackHandler := handlers.NewVkOAuthCallbackHandler(getOAuthCallbackQuery, oauthStateGenerator)
 
 	// Роутер
-	router := api.NewRouter(oauthGoogleRedirectHandler, oauthGoogleCallbackHandler)
+	router := api.NewRouter(oauthRedirectHandler, oauthGoogleCallbackHandler, oauthVkCallbackHandler)
 
 	if err := http.ListenAndServe(":"+port, router); err != nil {
 		panic(err)

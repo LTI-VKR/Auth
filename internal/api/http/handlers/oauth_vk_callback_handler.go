@@ -13,48 +13,44 @@ import (
 	"strconv"
 )
 
-type GoogleOAuthCallbackHandler struct {
+type VkOAuthCallbackHandler struct {
 	query          *query.GetOAuthCallbackQuery
 	stateGenerator ports.StateGenerator
 }
 
-func NewGoogleOAuthCallbackHandler(query *query.GetOAuthCallbackQuery, stateGenerator ports.StateGenerator) *GoogleOAuthCallbackHandler {
-	return &GoogleOAuthCallbackHandler{query: query, stateGenerator: stateGenerator}
+func NewVkOAuthCallbackHandler(query *query.GetOAuthCallbackQuery, stateGenerator ports.StateGenerator) *VkOAuthCallbackHandler {
+	return &VkOAuthCallbackHandler{query: query, stateGenerator: stateGenerator}
 }
 
 // Handle godoc
-// @Summary Google OAuth callback
+// @Summary VK OAuth callback
 // @Tags OAuth
 // @Produce json
 // @Param state query string true "OAuth state"
 // @Param code query string true "Authorization code"
-// @Param iss query string false "Issuer"
-// @Param scope query string false "OAuth scope"
-// @Param authuser query string false "Auth user"
-// @Param prompt query string false "Prompt"
+// @Param device_id query string true "VK device id"
 // @Success 302 {string} string "Redirect with user data"
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
-// @Router /auth/google/callback [get]
-func (h *GoogleOAuthCallbackHandler) Handle(w http.ResponseWriter, r *http.Request) {
+// @Router /auth/vk/callback [get]
+func (h *VkOAuthCallbackHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	urlQuery := r.URL.Query()
-	params := dto.GoogleOAuthCallbackRequestDto{
+	params := dto.VkOAuthCallbackRequestDto{
 		State:    urlQuery.Get("state"),
 		Code:     urlQuery.Get("code"),
-		Iss:      urlQuery.Get("iss"),
-		Scope:    urlQuery.Get("scope"),
-		Authuser: urlQuery.Get("authuser"),
-		Prompt:   urlQuery.Get("prompt"),
+		DeviceId: urlQuery.Get("device_id"),
 	}
 
 	if params.State == "" {
-		log.Printf("missing state parameter in callback")
 		httperrors.WriteError(w, r, httperrors.Map(httperrors.ErrMissingOAuthState))
 		return
 	}
 	if params.Code == "" {
-		log.Printf("missing code parameter in callback")
 		httperrors.WriteError(w, r, httperrors.Map(httperrors.ErrMissingOAuthCode))
+		return
+	}
+	if params.DeviceId == "" {
+		httperrors.WriteError(w, r, httperrors.Map(httperrors.ErrMissingOAuthDeviceId))
 		return
 	}
 
@@ -66,9 +62,10 @@ func (h *GoogleOAuthCallbackHandler) Handle(w http.ResponseWriter, r *http.Reque
 	}
 
 	userInfo, err := h.query.Execute(r.Context(), model.ExchangeCodeParams{
-		Code:  params.Code,
-		State: params.State,
-	}, application.GoogleProvider)
+		Code:     params.Code,
+		State:    params.State,
+		DeviceID: params.DeviceId,
+	}, application.VkProvider)
 	if err != nil {
 		log.Printf("failed to exchange code: %v", err)
 		httperrors.WriteError(w, r, httperrors.Map(err))
