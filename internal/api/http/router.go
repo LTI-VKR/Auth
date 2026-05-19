@@ -12,8 +12,9 @@ import (
 )
 
 func NewRouter(
-	getGoogleOAuthRedirectHandler *handlers.GetGoogleOAuthRedirectHandler,
+	getOAuthRedirectUrlHandler *handlers.GetOAuthRedirectUrlHandler,
 	googleOAuthCallbackHandler *handlers.GoogleOAuthCallbackHandler,
+	vkOAuthCallbackHandler *handlers.VkOAuthCallbackHandler,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -30,8 +31,11 @@ func NewRouter(
 	}))
 
 	r.Get("/health", handlers.Health)
-	r.Get("/auth/google/url", getGoogleOAuthRedirectHandler.Handle)
+
+	r.Get("/auth/url", getOAuthRedirectUrlHandler.Handle)
+
 	r.Get("/auth/google/callback", googleOAuthCallbackHandler.Handle)
+	r.Get("/auth/vk/callback", vkOAuthCallbackHandler.Handle)
 
 	r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
 	return r

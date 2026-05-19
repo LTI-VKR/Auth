@@ -59,11 +59,18 @@ func (s *StateGenerator) GenerateState(returnTo string) (string, error) {
 	encoded := base64.RawURLEncoding.EncodeToString(jsonData)
 	sigEncoded := base64.RawURLEncoding.EncodeToString(sig)
 
-	return encoded + "." + sigEncoded, nil
+	state := encoded + "." + sigEncoded
+	// Encode full state to avoid '.' being stripped by providers.
+	return base64.RawURLEncoding.EncodeToString([]byte(state)), nil
 }
 
 func (s *StateGenerator) VerifyAndExtractState(state string) (string, error) {
-	parts := strings.Split(state, ".")
+	decodedState, err := base64.RawURLEncoding.DecodeString(state)
+	if err != nil {
+		return "", ErrInvalidState
+	}
+
+	parts := strings.Split(string(decodedState), ".")
 	if len(parts) != 2 {
 		return "", ErrStateFormat
 	}
